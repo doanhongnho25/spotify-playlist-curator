@@ -58,10 +58,10 @@ Spin everything up:
 make up
 ```
 
-Services exposed locally:
-* API – http://localhost:8000
-* Frontend – http://localhost:3000
-* Flower (task monitoring) – http://localhost:5555
+Services exposed locally (use explicit IPv4 to satisfy Spotify OAuth callbacks):
+* API – http://127.0.0.1:8000
+* Frontend – http://127.0.0.1:3000
+* Flower (task monitoring) – http://127.0.0.1:5555
 * PostgreSQL – port 5432
 * Redis – port 6379
 

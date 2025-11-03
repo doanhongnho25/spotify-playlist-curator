@@ -67,7 +67,7 @@ Indices exist on track artist/popularity and playlist history `(playlist_id, add
 
 * Retries for 429/5xx responses should implement exponential backoff with jitter (six attempts max) and a 10-minute circuit breaker.
 * Per-account throttling (token bucket) is delegated to Redis-backed helpers (to be implemented in worker services).
-* Flower (http://localhost:5555) provides observability into task queues.
+* Flower (http://127.0.0.1:5555) provides observability into task queues.
 
 ## Security
 

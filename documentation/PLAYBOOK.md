@@ -19,7 +19,7 @@
 
 ### Trigger Full Sync
 ```
-curl -X POST http://localhost:8000/api/v1/playlists/sync \
+curl -X POST http://127.0.0.1:8000/api/v1/playlists/sync \
   -H "X-ADMIN-API-KEY: $ADMIN_API_KEY"
 ```
 
@@ -30,13 +30,13 @@ curl -X POST http://localhost:8000/api/v1/playlists/sync \
 
 ### Emergency Token Refresh
 ```
-curl -X POST http://localhost:8000/celery/refresh \
+curl -X POST http://127.0.0.1:8000/celery/refresh \
   -H "X-ADMIN-API-KEY: $ADMIN_API_KEY"
 ```
 *(placeholder – actual trigger uses Celery beat; manual invocation should call the task via `celery_app.send_task("refresh_tokens")`)*
 
 ## Monitoring & Alerts
-* **Flower** at `http://localhost:5555` for task queues.
+* **Flower** at `http://127.0.0.1:5555` for task queues.
 * Metrics to wire into Prometheus/Grafana:
   * `tracks_ingested_total`
   * `playlists_synced_total`
