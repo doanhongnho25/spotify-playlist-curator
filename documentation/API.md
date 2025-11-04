@@ -1,466 +1,137 @@
-# Project Vibe API Reference
+# API Reference
 
-Base URL: `http://127.0.0.1:8000`
-
-## Overview
-
-The Project Vibe API provides endpoints for Spotify authentication and playlist management. All authenticated endpoints require a valid session cookie.
+All endpoints live under the `/api/v1` prefix and require an authenticated dashboard session cookie unless noted. Responses use JSON.
 
 ## Authentication
 
-Authentication is handled via OAuth 2.0 with Spotify. Sessions are maintained using HTTP-only cookies.
-
-### Session Cookie
-- **Name:** `spotify_session`
-- **Type:** HTTP-only, Lax SameSite
-- **Duration:** 3600 seconds (1 hour)
-- **Storage:** Server-side in-memory
-
----
-
-## Endpoints
-
-### Health Check
-
-#### `GET /`
-
-Check if the API is running and view configuration.
-
-**Request:**
-```http
-GET / HTTP/1.1
-Host: 127.0.0.1:8000
+### `POST /api/v1/auth/dev-login`
+Request body:
+```json
+{ "username": "admin", "password": "admin" }
 ```
+Sets an HTTP-only `dashboard_session` cookie. Returns `{ "message": "logged_in" }`.
 
-**Response:**
+### `GET /api/v1/auth/dev-status`
+Returns `{ "authenticated": true }` when the cookie is valid.
+
+### `POST /api/v1/auth/dev-logout`
+Clears the session cookie and returns `{ "message": "logged_out" }`.
+
+## Spotify OAuth
+
+### `GET /api/v1/accounts/connect`
+Returns `{ "authorization_url": "https://accounts.spotify.com/authorize?..." }`.
+
+### `GET /api/v1/oauth/spotify/callback`
+Parameters: `code`, `state` (from Spotify). Exchanges the code, upserts the Spotify account, and marks it active for the current session. Response `{ "status": "connected" }`.
+
+## Accounts
+
+### `GET /api/v1/accounts/list`
+Returns
 ```json
 {
-  "status": "ok",
-  "frontend_url": "http://127.0.0.1:3000",
-  "backend_url": "http://127.0.0.1:8000"
-}
-```
-
-**Status Codes:**
-- `200 OK` - Service is running
-
----
-
-## Authentication Endpoints
-
-### Initiate Spotify Login
-
-#### `GET /api/v1/auth/login`
-
-Redirects the user to Spotify's authorization page to grant access.
-
-**Request:**
-```http
-GET /api/v1/auth/login HTTP/1.1
-Host: 127.0.0.1:8000
-```
-
-**Response:**
-- `307 Temporary Redirect` to Spotify authorization URL
-
-**Redirect URL Parameters:**
-- `client_id` - Your Spotify client ID
-- `response_type=code`
-- `redirect_uri` - Callback URL
-- `scope=playlist-modify-public playlist-modify-private`
-- `state` - CSRF protection token
-
-**Status Codes:**
-- `307 Temporary Redirect` - Redirects to Spotify
-
-**Notes:**
-- Generates and stores a state parameter for CSRF protection
-- User will be prompted to authorize the application on Spotify
-
----
-
-### OAuth Callback
-
-#### `GET /api/v1/auth/callback`
-
-Handles the OAuth callback from Spotify after user authorization.
-
-**Request:**
-```http
-GET /api/v1/auth/callback?code=AQA_Dyp6...&state=JYpo7kH... HTTP/1.1
-Host: 127.0.0.1:8000
-```
-
-**Query Parameters:**
-- `code` (required) - Authorization code from Spotify
-- `state` (required) - CSRF state token
-
-**Response:**
-- `307 Temporary Redirect` to frontend URL
-- Sets `spotify_session` cookie
-
-**Status Codes:**
-- `307 Temporary Redirect` - Success, redirects to frontend
-- `400 Bad Request` - Invalid state or failed token exchange
-
-**Error Response:**
-```json
-{
-  "detail": "Invalid state parameter"
-}
-```
-
-**Notes:**
-- Exchanges authorization code for access and refresh tokens
-- Stores tokens server-side
-- Sets HTTP-only session cookie
-- This endpoint is called by Spotify, not directly by the frontend
-
----
-
-### Check Authentication Status
-
-#### `GET /api/v1/auth/status`
-
-Check if the current session is authenticated.
-
-**Request:**
-```http
-GET /api/v1/auth/status HTTP/1.1
-Host: 127.0.0.1:8000
-Cookie: spotify_session=4k3K_Lrrci...
-```
-
-**Response:**
-```json
-{
-  "authenticated": true
-}
-```
-
-**Status Codes:**
-- `200 OK` - Status check successful
-
-**Notes:**
-- Returns `false` if no valid session cookie
-- Used by frontend to determine UI state
-
----
-
-### Logout
-
-#### `POST /api/v1/auth/logout`
-
-Log out the current user and clear session.
-
-**Request:**
-```http
-POST /api/v1/auth/logout HTTP/1.1
-Host: 127.0.0.1:8000
-Cookie: spotify_session=4k3K_Lrrci...
-```
-
-**Response:**
-```json
-{
-  "status": "logged out"
-}
-```
-
-**Status Codes:**
-- `200 OK` - Logout successful
-
-**Notes:**
-- Deletes session from server storage
-- Clears session cookie
-- Safe to call even if not authenticated
-
----
-
-## Playlist Endpoints
-
-### Generate Playlist
-
-#### `POST /api/v1/playlist/generate`
-
-Generate a playlist of 10 songs based on a vibe using AI.
-
-**Request:**
-```http
-POST /api/v1/playlist/generate HTTP/1.1
-Host: 127.0.0.1:8000
-Content-Type: application/json
-
-{
-  "vibe": "cozy rainy day"
-}
-```
-
-**Request Body:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| vibe | string | Yes | Description of the mood/vibe |
-
-**Response:**
-```json
-{
-  "songs": [
+  "accounts": [
     {
-      "title": "Dreams",
-      "artist": "Fleetwood Mac"
-    },
-    {
-      "title": "Sunday Morning",
-      "artist": "Maroon 5"
-    },
-    ...
-  ]
+      "id": "...",
+      "display_name": "Vibe Bot",
+      "spotify_user_id": "user123",
+      "prefix": "Vibe Collection",
+      "expires_at": "2024-05-01T12:00:00Z",
+      "playlists_count": 40,
+      "status": "active"
+    }
+  ],
+  "active_account_id": "..."
 }
 ```
 
-**Response Fields:**
-| Field | Type | Description |
-|-------|------|-------------|
-| songs | array | Array of song objects |
-| songs[].title | string | Song title |
-| songs[].artist | string | Artist name |
+### `POST /api/v1/accounts/active/set`
+Body `{ "account_id": "<uuid or null>" }`. Stores the active account for the current session. Returns the same payload as `/list`.
 
-**Status Codes:**
-- `200 OK` - Playlist generated successfully
-- `500 Internal Server Error` - AI generation failed
+### `POST /api/v1/accounts/prefix`
+Body `{ "account_id": "<uuid>", "prefix": "Midnight Flow" }`. Updates the naming prefix and returns `{ "id": "...", "prefix": "Midnight Flow" }`.
 
-**Error Response:**
+### `POST /api/v1/accounts/refresh/{id}`
+Refreshes Spotify tokens. Response mirrors an `AccountRead` object.
+
+### `DELETE /api/v1/accounts/{id}`
+Marks the account inactive and clears it as active for the session.
+
+## Library
+
+### `POST /api/v1/library/ingest`
+Body:
 ```json
 {
-  "detail": "Failed to generate playlist: <error message>"
+  "album_urls": ["https://open.spotify.com/album/..."]
 }
 ```
+Uses the active account token to fetch album metadata + tracks, storing results in the database. Returns `{ "queued": <count> }`.
 
-**Notes:**
-- Does not require authentication
-- Uses Google Gemini AI
-- Returns exactly 10 songs
-- Songs may not exist on Spotify (verification happens during creation)
+## Playlists
 
----
+### `GET /api/v1/playlists/list`
+Returns `{ "playlists": [ { ...PlaylistRead } ] }`.
 
-### Create Playlist on Spotify
-
-#### `POST /api/v1/playlist/create`
-
-Create a playlist in the authenticated user's Spotify account.
-
-**Request:**
-```http
-POST /api/v1/playlist/create HTTP/1.1
-Host: 127.0.0.1:8000
-Content-Type: application/json
-Cookie: spotify_session=4k3K_Lrrci...
-
-{
-  "vibe": "cozy rainy day",
-  "songs": [
-    {
-      "title": "Dreams",
-      "artist": "Fleetwood Mac"
-    },
-    ...
-  ]
-}
-```
-
-**Request Body:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| vibe | string | Yes | Original vibe description (used for playlist name) |
-| songs | array | Yes | Array of song objects to add |
-| songs[].title | string | Yes | Song title |
-| songs[].artist | string | Yes | Artist name |
-
-**Response:**
+### `POST /api/v1/playlists/create`
+Body:
 ```json
 {
-  "status": "success",
-  "playlist_id": "3cEYpjA9oz9GiPac4AsH4n",
-  "playlist_url": "https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n",
-  "tracks_added": 9
+  "account_id": "<uuid>",
+  "count": 25,
+  "prefix": "Aurora",
+  "size": 50,
+  "interval_days": 5
 }
 ```
+Creates the requested number of playlists for the account, sampling tracks according to cooldown + artist cap settings. Response `{ "created_playlist_ids": ["..."] }`.
 
-**Response Fields:**
-| Field | Type | Description |
-|-------|------|-------------|
-| status | string | "success" or error |
-| playlist_id | string | Spotify playlist ID |
-| playlist_url | string | Direct URL to open playlist in Spotify |
-| tracks_added | integer | Number of tracks successfully added (may be less than requested) |
+### `POST /api/v1/playlists/{id}/reshuffle`
+Replaces the playlist tracks with a fresh 50-track snapshot and logs history. Returns `{ "id": "...", "status": "reshuffled" }`.
 
-**Status Codes:**
-- `200 OK` - Playlist created successfully
-- `401 Unauthorized` - Not authenticated or session expired
-- `400 Bad Request` - Failed to create playlist or get user info
+### `POST /api/v1/playlists/reshuffle-bulk`
+Body example:
+```json
+{ "mode": "account", "account_id": "<uuid>" }
+```
+Mode options: `all`, `account`, `selected`. Returns `{ "created_playlist_ids": ["..."] }` representing reshuffled playlists.
 
-**Error Responses:**
+## Settings
 
-Not authenticated:
+### `GET /api/v1/settings`
+Returns current runtime configuration, e.g.
 ```json
 {
-  "detail": "Not authenticated"
+  "playlist_size": 50,
+  "reshuffle_interval_days": 5,
+  "cooldown_days": 5,
+  "max_playlists_per_account": 200,
+  "artist_cap": 2,
+  "default_prefix": "Vibe Collection"
 }
 ```
 
-Failed to create:
-```json
-{
-  "detail": "Failed to create playlist: <error message>"
-}
-```
+### `POST /api/v1/settings`
+Accepts the same shape to persist overrides in the `settings` table.
 
-**Notes:**
-- Requires valid authentication (session cookie)
-- Creates a private playlist named "Vibe: {vibe}"
-- Searches for each song on Spotify
-- Only adds tracks that are found (tracks_added may be less than songs provided)
-- Playlist is immediately available in user's Spotify account
+## Metrics
 
----
+### `GET /api/v1/metrics/overview`
+Returns counts for accounts, playlists, tracks, reshuffles scheduled today, next reshuffle ETA, and a `system_health` summary.
 
-## Error Responses
+### `GET /api/v1/metrics/history`
+Returns `{ "history": [ { "timestamp": "...", "playlists": 120, "reshuffles": 35 } ] }`.
 
-All endpoints may return the following error format:
+## Jobs
 
-```json
-{
-  "detail": "Error message describing what went wrong"
-}
-```
+### `GET /api/v1/jobs/list`
+Returns scheduler metadata for core jobs (reshuffle, refresh tokens, metrics snapshot).
 
-### Common HTTP Status Codes
+### `POST /api/v1/jobs/update`
+Body `{ "name": "reshuffle_due_playlists", "enabled": true }`. Toggles the job and returns the updated job list.
 
-| Code | Meaning | Common Causes |
-|------|---------|---------------|
-| 200 | OK | Request successful |
-| 307 | Temporary Redirect | OAuth flow redirects |
-| 400 | Bad Request | Invalid parameters, failed external API call |
-| 401 | Unauthorized | Missing or invalid session cookie |
-| 500 | Internal Server Error | Server error, AI generation failed |
+## Health
 
----
-
-## Authentication Flow
-
-Complete OAuth 2.0 flow sequence:
-
-1. Frontend calls `GET /api/v1/auth/login`
-2. User redirected to Spotify
-3. User authorizes app on Spotify
-4. Spotify redirects to `GET /api/v1/auth/callback?code=...&state=...`
-5. Backend exchanges code for tokens
-6. Backend sets `spotify_session` cookie
-7. Backend redirects to frontend
-8. Frontend calls `GET /api/v1/auth/status` to verify
-9. Frontend includes cookie in all subsequent requests
-
----
-
-## Rate Limits
-
-- **Spotify API:** Subject to Spotify's rate limits (varies by endpoint)
-- **Gemini AI:** Subject to Google's rate limits
-- **This API:** No rate limiting implemented in MVP
-
----
-
-## CORS Configuration
-
-**Allowed Origins:**
-- `http://127.0.0.1:3000`
-- `http://localhost:3000`
-
-**Credentials:** Allowed (required for cookies)
-
-**Methods:** All
-
-**Headers:** All
-
----
-
-## Development Notes
-
-### Base URL
-- Local: `http://127.0.0.1:8000`
-- Must use IP address (not localhost) due to Spotify OAuth requirements
-
-### Session Storage
-- Current implementation uses in-memory storage
-- Sessions lost on server restart
-- Not suitable for production horizontal scaling
-
-### Token Expiry
-- Access tokens expire after 1 hour
-- No automatic refresh implemented
-- Users must re-authenticate after expiry
-
----
-
-## Example Usage
-
-### JavaScript/Frontend Example
-
-```javascript
-// Check auth status
-const checkAuth = async () => {
-  const response = await fetch('http://127.0.0.1:8000/api/v1/auth/status', {
-    credentials: 'include' // Important: include cookies
-  });
-  const data = await response.json();
-  return data.authenticated;
-};
-
-// Generate playlist
-const generatePlaylist = async (vibe) => {
-  const response = await fetch('http://127.0.0.1:8000/api/v1/playlist/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vibe })
-  });
-  return await response.json();
-};
-
-// Create playlist
-const createPlaylist = async (vibe, songs) => {
-  const response = await fetch('http://127.0.0.1:8000/api/v1/playlist/create', {
-    method: 'POST',
-    credentials: 'include', // Important: include cookies
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vibe, songs })
-  });
-  return await response.json();
-};
-```
-
-### cURL Examples
-
-Generate playlist:
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/playlist/generate \
-  -H "Content-Type: application/json" \
-  -d '{"vibe": "summer vibes"}'
-```
-
-Check auth status:
-```bash
-curl -X GET http://127.0.0.1:8000/api/v1/auth/status \
-  -b "spotify_session=your_session_id"
-```
-
----
-
-## Security Considerations
-
-- Always use HTTPS in production
-- Never expose session cookies to client-side JavaScript
-- Validate all input on server side
-- Session cookies are HTTP-only (XSS protection)
-- State parameter prevents CSRF attacks
-- Tokens stored server-side only
+### `GET /`
+Open healthcheck returning `{ "status": "ok", "environment": "development" }`.
