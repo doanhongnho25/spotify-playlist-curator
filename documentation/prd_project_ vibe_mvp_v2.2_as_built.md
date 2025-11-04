@@ -86,7 +86,7 @@ We believe that by building a simple app that translates vibes into playlists an
 - Re-authentication required after session expiry
 
 ### Playlist Generation
-- Uses Google Gemini AI (gemini-2.0-flash-exp model)
+- Development dashboard orchestrates ingest → curate → sync (no external LLM dependency)
 - Generates exactly 10 songs per vibe
 - Song search and matching via Spotify Search API
 - Tracks added count reported to user
